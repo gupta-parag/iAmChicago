@@ -1,0 +1,139 @@
+---
+output: 
+  html_document:
+    includes:
+      in_header: header.html
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{css echo = FALSE}
+* {
+font-family: 'Roboto', sans-serif;
+}
+
+.main-container {
+  min-width: 100vw;
+  padding-left:0px;
+  padding-right:0px;
+}
+
+.mapboxg1-canvas {
+padding: 0px;
+margin: 0px;
+}
+```
+
+
+
+
+```{r echo = FALSE, message=FALSE, error = FALSE, include = FALSE,  warning=FALSE}
+library(deckgl)
+library(sf)
+library(leaflet)
+library(scales)
+library(jsonlite)
+library(htmlwidgets)
+library(knitr)
+library(cartography)
+library(viridis)
+
+
+
+sf <- st_read( "C:\\Users\\gupta\\Dropbox\\chicago-spatial-data\\CMAPONTO2050ForecastByLAZ" , 
+               layer = "CMAP_ONTO2050_ForecastByLAZ")
+
+sf$Emp_Growth <- round((sf$EMP_2050 - sf$EMP_2020) * 100/sf$EMP_2020,1)
+sf$Phh_Growth <- sf$PHH_2050 - sf$PHH_2020
+sf$hh_Growth <- sf$HH_2050 - sf$HH_2020
+sf$EMP_2050 <- round(sf$EMP_2050 , 0)
+sf$Jobs_PA_50 <- round(sf$EMP_2050 * 43560/sf$Shape_Area,1)
+sf$Jobs_PA_20 <- round(sf$EMP_2020 * 43560/sf$Shape_Area,1)
+sf$EMP_2020 <- round(sf$EMP_2020 , 0)
+sf$Shape_Area <- round(sf$Shape_Area/43560,2)
+#colors <- c("#79DAE8", "#7FB5FF","#0AA1DD", "#533E85", "#2155CD","#E8F9FD","#6998AB")
+bins <- getBreaks(sf$EMP_2050 ,nclass = 10, method = "fisher" )
+pal <- colorBin(viridis(16), domain = sf$EMP_2050 , bins = bins)
+sf$color <- pal(sf$EMP_2050)
+
+
+props = list(
+  getPolygon = JS("d => d.geometry.coordinates"),
+  pickable = TRUE,
+  autoHighlight = TRUE,
+   highlightColor = c(120, 40, 30), 
+  extruded = TRUE,
+  stroked = TRUE,
+  filled = TRUE,
+  opacity = 0.9,
+  wireframe = FALSE,  
+  getLineWidth = 0.4,
+  getLineColor = "black",
+  getElevation =  JS("f => f.EMP_2050 "),
+  getFillColor =  ~get_color_to_rgb_array(color),#JS("f => [f.growth * 50, 140, 10]"),
+  lineWidthMinPixels = 1 ,# !!!
+  tooltip =  "<div>Percentage Growth : {{Emp_Growth}} %
+  <br/>Employment (2050): {{EMP_2050}} jobs
+   <br/>Employment (2020): {{EMP_2020}} jobs
+  <br/>Jobs per Acre (2050): {{Jobs_PA_50}}
+  <br/>Jobs per Acre (2020): {{Jobs_PA_20}}
+  <br/>Shape Area: {{Shape_Area}} Acres</div>
+  <style>
+  div{
+  font-family: 'Roboto', sans-serif;
+  }
+  </style>
+  "
+)
+```
+
+
+```{r deckgl , echo=FALSE}
+ deckgl(latitude = 41.886865, longitude = -87.571784, zoom =10.5, 
+          element_id = "map1",
+        pitch = 0, bearing =0,
+        height = "100vh",
+        width = "100vw") %>%
+  add_polygon_layer(
+    data = sf,
+    properties = props
+  ) %>%
+  add_basemap(use_carto_style()) %>%
+   add_legend_pal(pal, title = "Employment 2050", pos = "bottom-right", style = "
+                  color:white;
+                  font-family: 'Roboto', sans-serif;
+                  background-color: black;
+                  font-size: 1.5rem;
+                  margin-bottom: 30px;") %>%
+  add_control("<h5>Employment 2050 : Forecast
+  </h5>
+  <div class = 'author'> Visualization By : <a href = 'https://www.linkedin.com/in/parag-gupta-29413214a/' target = '_blank'>Parag Gupta</a></div>
+  
+  <style>
+  div {
+  font-size:1.4rem;
+  }
+  .author{
+  font-size:1.5rem;
+  }
+  </style>",
+              pos = "top-left", 
+             style = "
+             color: white;
+             font-family: 'Roboto', sans-serif;
+             background-color:black;
+             font-family:sans-serif;
+             margin-left:20px
+              " )
+```
+
+
+```{css, echo = FALSE}
+
+```
+
+
+
+
